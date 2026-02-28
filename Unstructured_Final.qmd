@@ -1,0 +1,492 @@
+---
+title: "Unstructured Final Project: WHO Health Conditions"
+format: html
+---
+
+# WHO Health Conditions: A Text Analysis of Key Facts and Consequences
+
+For this analysis, I wanted to understand patterns in the tones of reporting various heath conditions. The World Health Organization (WHO) provides a comprehensive list of health conditions alphabetical order on their website, and each condition is linked to a fact sheet that contains a variety of information ranging from key facts, to prevention, to consequences. I scraped the WHO website to extract the key facts and consequences for each condition, and then analyzed the text to identify common themes and patterns.
+
+When investigating the page structure, the newroom factsheet displays an alphabetical list of conditions with each condition linking to a seperate page with more information. These pages do not contain the same sections, but most contain a "Key facts" section and a few have a "Consequence" section. This first section of code focuses on using BeautifulSoup to extract condition names and their urls which follow the pattern "https://www.who.int/news-room/fact-sheets/detail/condition". The length of the collected dataframe reflects there are 237 total conditions listed on the WHO website.
+
+```{python}
+import requests
+from bs4 import BeautifulSoup
+import pandas as pd
+import re
+
+factsheets = "https://www.who.int/news-room/fact-sheets"
+response = requests.get(factsheets)
+soup = BeautifulSoup(response.text, "html.parser")
+
+condition_names = []
+condition_hrefs = []
+
+for i in soup.find_all("a", href=True):
+    href = i["href"]
+    if "/news-room/fact-sheets/detail/" in href:
+        name = i.get_text(strip=True)
+        condition_names.append(name) 
+        condition_hrefs.append("https://www.who.int" + href)  
+
+df = pd.DataFrame({
+    "condition": condition_names,
+    "url": condition_hrefs})
+
+print(df.head(20))
+print("Total conditions:", len(df))
+```
+
+I then iterated through each condition page and used BeautifulSoup to extract the text from the "Key facts" and "Consequence" sections. I search through the section headers to identify where the sections start. When it finds the key facts header it finds the bullet points in the section and joins them together into a single string with a separator. For consequences, I catpure all of the text until the next header. I also added a time.sleep(0.5) to avoid overwhelming the server with requests.
+
+```{python}
+import time
+final_df = []
+
+for i in range(len(df)):
+    url = df.loc[i, 'url']
+    condition_name = df.loc[i, 'condition']
+    
+    try:
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, "html.parser")
+        
+        key_facts_text = ""
+        consequences_text = ""
+
+        for header in soup.find_all(["h2", "h3"]):
+            header_text = header.get_text(strip=True).lower()
+            
+            # key fact section
+            if "key facts" in header_text:
+                ul = header.find_next("ul")
+                if ul:
+                    key_facts_text = " | ".join([li.get_text(strip=True) for li in ul.find_all("li")])
+            
+            # consequence section
+            if "consequence" in header_text:  
+               
+                content = ""
+                next_elem = header.find_next_sibling()
+   
+                while next_elem and next_elem.name not in ["h2", "h3"]:
+                    content += " " + next_elem.get_text(strip=True)
+                    next_elem = next_elem.find_next_sibling()
+                consequences_text = content.strip()
+        
+
+
+        final_df.append({
+            "condition": condition_name,
+            "url": url,
+            "key_facts": key_facts_text,
+            "consequences": consequences_text
+        })
+        time.sleep(0.5)
+        
+    except Exception as e:
+        print(f"Error {url}: {e}")
+```
+
+```{python}
+condition_df = pd.DataFrame(final_df)
+print(condition_df.head())
+```
+
+```{python}
+import numpy as np
+
+condition_df["consequences"] = (condition_df["consequences"].replace("", np.nan).replace(r"^\s*$", np.nan, regex=True))
+
+num_consequences = condition_df["consequences"].notna().sum()
+print(num_consequences)
+num_key_facts = condition_df["key_facts"].notna().sum()
+print(num_key_facts)
+print(len(condition_df))
+condition_df = condition_df[condition_df["key_facts"].notna()]
+```
+
+Taking a look at what was scraped, it seems that there are only 7 conditions that have consequences listed and 237 conditions that have key facts listed. Since the key facts section is more common, I will be using this section for the topic modeling portion of the analysis. 
+
+
+# Sentiment Analysis
+## Objective: What is the typical tone of key facts? For the conditions that have consequences, how does the tone of the consequences compare to the tone of the key facts? Are there conditions where these tones differ significantly?
+
+```{python}
+from transformers import pipeline
+sentiment_analysis = pipeline("sentiment-analysis")
+```
+
+## Labels and Scores for Key Facts
+
+First things first, I got the scores and labels for key facts and consequences. Since there are only 4 conditions with consequences, most will be recorded as None. I also limited the text to the first 500 characters. 
+```{python}
+key_facts_labels = []
+key_facts_scores = []
+for text in condition_df["key_facts"]:
+    if pd.isna(text):
+        key_facts_labels.append(None)
+        key_facts_scores.append(None)
+    else:
+        result = sentiment_analysis(text[:500])
+    key_facts_labels.append(result[0]["label"])
+    key_facts_scores.append(result[0]["score"])
+```
+
+## Labels and Scores for Consequences
+```{python}
+consequence_labels = []
+consequence_scores = []
+
+for text in condition_df["consequences"]:
+    if pd.isna(text):
+        consequence_labels.append(None)
+        consequence_scores.append(None)
+    else:
+        result = sentiment_analysis(text[:500])
+        consequence_labels.append(result[0]["label"])
+        consequence_scores.append(result[0]["score"])
+```
+
+
+```{python}
+condition_df["key_facts_sentiment"] = key_facts_labels
+condition_df["key_facts_confidence"] = key_facts_scores
+condition_df["consequences_sentiment"] = consequence_labels
+condition_df["consequences_confidence"] = consequence_scores
+```
+
+
+Next, I wanted to compare the conditions that have consequences to their key facts to see if there are any noticable differences in tone. I filtered out the conditions that do not have consequences and then compared the sentiment labels and confidence scores for the key facts and consequences. I also calculated the average confidence score for both key facts and consequences to see if there is a general trend in tone across all conditions.
+
+```{python}
+comparison = condition_df[condition_df["consequences"].notna()]
+comparison[["condition", "key_facts_sentiment", "key_facts_confidence", "consequences_sentiment", "consequences_confidence"]]
+```
+
+Since there are only 7 conditions that recorded consequences it is easy to visually compare the sentiment labels for key facts and consequences. Almost all of them were recorded to have a negative tone however two rows stand out. The consequence sentiment for animal bites and obesity and overweight were both labeled as positive while their key facts are labeled as negative. I would have expected if anything for the consequences to be more negative than the key facts, so this is an interesting finding. 
+
+
+I wanted to take a closer look at the conditions that were identified as having a positive tone in the key facts section to see if there were any common themes or patterns in the language used. I filtered the dataframe to only include conditions with a positive sentiment label for key facts and then examined the full text using pd.set_option("display.max_colwidth", None) to ensure that the entire text was visible.
+```{python}
+positives = condition_df[condition_df["key_facts_sentiment"] == "POSITIVE"]
+
+pd.set_option("display.max_colwidth", None)
+positives[["condition", "key_facts","key_facts_sentiment", "key_facts_confidence"]].head(4)
+```
+
+Taking a closer look at the first condition it flagged as positive, "Ageing and health", it seems the model classified this passage as positive because it is reacting to the tone of the language rather than the broader demographic implications. Phrases such as “make the most of this demographic shift” and words like “ensure” and “living” are commonly associated with proactive, constructive, or optimistic contexts in the data the model was trained on. Even “older people” is a neutral demographic descriptor, not an emotionally negative phrase. Although the passage describes serious structural challenges related to population ageing, it does so using formal, policy-oriented language rather than emotionally charged or negative wording. Transformer-based sentiment analysis models can sometimes misclassify text that is discussing serious or negative topics if the language used is more neutral or formal, as they rely heavily on the presence of certain words and phrases to determine sentiment. In this case, the model may have picked up on the more neutral or even slightly optimistic language used in the passage, leading it to classify it as positive despite the underlying topic being about challenges related to ageing.
+
+## Final Summary of Sentiment Analysis
+```{python}
+print("Avg confidence score key facts:", condition_df["key_facts_confidence"].mean())
+print("Avg confidence score consequences:", condition_df["consequences_confidence"].mean()) 
+print("Positive key facts:", (condition_df["key_facts_sentiment"] == "POSITIVE").sum())
+print("Negative key facts:", (condition_df["key_facts_sentiment"] == "NEGATIVE").sum())
+```
+
+I think the most interesting thing about the results of this analysis are the immensely high confidence scores for both key facts and consequences. With the average confidence score being above 0.9 for key facts, this means that it was very confident for all 237 conditions it analyzed. Further, it did find a decent number of conditions to have positive key facts, which is interesting given the nature of the content. These results highlight some of the limitations in using sentiment analysis models for analyzing complex and nuanced text, especially in the context of health conditions where the language may be more formal and less emotional. The model's reliance on certain words and phrases to determine sentiment can lead to misclassifications, as seen in the case of "Ageing and health". This underscores the importance of critically evaluating the results of sentiment analysis and considering the broader context of the text being analyzed.
+
+
+# Classification and Topic Modeling 
+
+The first task was to break conditions into different categories based on type of condition. I had ChatGPT generate a list of 9 categories and keywords for each category. As much as I love this topic, I am not well versed in the vocabulary in the world of health. 
+```{python}
+classes = [
+    "Mental",
+    "Chronic Physical",
+    "Acute Physical",
+    "Terminal",
+    "Infectious",
+    "Environmental",
+    "Maternal/Reproductive",
+    "Substance-related",
+    "Other"
+]
+```
+
+```{python}
+category_keywords = {
+    "Mental": [
+        "depression", "anxiety", "mental", "suicide",
+        "psychological", "psychiatric", "bipolar", "schizophrenia"
+    ],
+    
+    "Chronic Physical": [
+        "chronic", "diabetes", "cardiovascular",
+        "hypertension", "asthma", "arthritis"
+    ],
+    
+    "Infectious": [
+        "virus", "bacterial", "infection", "infectious",
+        "tuberculosis", "malaria", "hiv"
+    ],
+    
+    "Terminal": [
+        "terminal", "fatal", "mortality", "death",
+        "end-stage", "life-threatening"
+    ],
+    
+    "Substance-related": [
+        "alcohol", "drug", "substance", "addiction",
+        "tobacco"
+    ],
+    
+    "Maternal/Reproductive": [
+        "pregnancy", "maternal", "birth", "reproductive",
+        "infant"
+    ]
+}
+```
+
+Using these keywords, I created a function to classify conditions into the categories. If a condition did not contain any of the keywords, it was classified as "Other". I then applied this function to the key facts column to create a new column in the dataframe with the condition class.
+```{python}
+def classify_condition(text):
+    if pd.isna(text):
+        return "Other"
+    
+    text = str(text).lower()
+    
+    for category, keywords in category_keywords.items():
+        if any(keyword in text for keyword in keywords):
+            return category
+    
+    return "Other"
+```
+
+```{python}
+condition_df["condition_class"] = condition_df["key_facts"].apply(classify_condition)
+condition_df["condition_class"].value_counts()
+```
+
+## Visualising the Breakdown
+```{python}
+import matplotlib.pyplot as plt
+condition_df["condition_class"].value_counts().plot(kind="bar")
+plt.title("Count of Conditions by Class")
+plt.xlabel("Condition Class")
+plt.ylabel("Count")
+plt.show()
+```
+
+All things considered, the categories seem to have done a decent job capturing the types of conditions available in this dataset. The "Other" category is still high so after running the first topic model this will likely shead light on how the conditions could be broken down further. 
+
+# Cleaning and Prep LDA
+```{python}
+condition_df['key_facts_cleaned'] = condition_df['key_facts'].astype('str')
+
+condition_df['key_facts_cleaned'] = condition_df['key_facts_cleaned'].str.replace('([a-z])([A-Z])', '\\1 \\2', regex=True)
+
+condition_df['key_facts_cleaned'] = condition_df['key_facts_cleaned'].str.replace('\\[.*?\\]', ' ', regex=True)
+```
+
+
+```{python}
+from bertopic.vectorizers import ClassTfidfTransformer
+from joblib import load, dump
+import pandas as pd
+import gensim
+from gensim.models.coherencemodel import CoherenceModel
+import nltk
+import pandas as pd
+import pprint as pprint
+import spacy
+```
+
+
+```{python}
+stop_words = nltk.corpus.stopwords.words('english')
+
+def sent_to_words(sentences):
+   for sentence in sentences:
+       yield(gensim.utils.simple_preprocess(str(sentence), deacc=True))
+
+
+data_words = list(sent_to_words(condition_df['key_facts_cleaned']))
+
+
+def remove_stopwords(texts):
+   return [
+       [word for word in gensim.utils.simple_preprocess(str(doc))
+        if word not in stop_words]
+       for doc in texts
+   ]
+```
+
+
+```{python}
+bigram = gensim.models.Phrases(
+ data_words, min_count=5, threshold=100
+)
+
+
+trigram = gensim.models.Phrases(
+ bigram[data_words], threshold=100
+)
+
+
+bigram_mod = gensim.models.phrases.Phraser(bigram)
+trigram_mod = gensim.models.phrases.Phraser(trigram)
+
+
+nlp = spacy.load('en_core_web_sm')
+
+
+def lemmatization(texts, allowed_postags=['NOUN', 'ADJ', 'VERB', 'ADV']):
+   texts_out = []
+   for sent in texts:
+       doc = nlp(" ".join(sent))
+       texts_out.append([
+           token.lemma_ for token in doc
+           if token.pos_ in allowed_postags
+       ])
+   return texts_out
+
+
+data_words_nostops = remove_stopwords(data_words)
+```
+
+
+```{python}
+data_words_bigrams = [bigram_mod[doc] for doc in data_words_nostops]
+```
+
+
+```{python}
+data_lemmatized = lemmatization(data_words_bigrams, allowed_postags=['NOUN', 'ADJ', 'VERB', 'ADV'])
+
+
+id2word = gensim.corpora.Dictionary(data_lemmatized)
+
+
+texts = data_lemmatized
+
+
+dump(
+ [id2word, texts, data_lemmatized],
+ '/Users/maddypitman/Documents/Unstructured/lda_data.joblib'
+)
+```
+
+
+```{python}
+id2word, texts, data_lemmatized = load(
+ '/Users/maddypitman/Documents/Unstructured/lda_data.joblib'
+)
+corpus = [id2word.doc2bow(text) for text in texts]
+```
+
+
+```{python}
+lda_model = gensim.models.ldamodel.LdaModel(
+ corpus=corpus,
+ id2word=id2word,
+ num_topics=5,
+ random_state=100,
+ update_every=1,
+ chunksize=100,
+ passes=10,
+ alpha='auto',
+ per_word_topics=True
+)
+
+
+dump(
+ [lda_model, corpus],
+'/Users/maddypitman/Documents/Unstructured/lda_data.joblib'
+)
+```
+
+
+```{python}
+lda_model, corpus = load(
+ '/Users/maddypitman/Documents/Unstructured/lda_data.joblib'
+)
+pprint.pprint(lda_model.print_topics())
+doc_lda = lda_model[corpus]
+```
+
+The LDA topic model identified five broad themes across the WHO key facts text. Several of the topics centered on infectious disease burden, particularly among children, with frequent references to death, infection, vaccines, and cases. Another theme focused on women’s health and gender-related issues, including cancer, violence, and maternal health indicators. A broader population topic also emerged, emphasizing health systems, life expectancy, access to care, and differences across countries. Together, these themes suggest that WHO reporting frequently frames conditions in terms of mortality, demographic impact, and global health infrastructure.
+
+Overall, the model indicates that infectious diseases and population health metrics are dominant patterns in the language of the fact sheets. While some topics capture more specific clusters, such as illness types, there is substantial overlap in high-frequency terms like death, cause, and people. This reflects the consistent style of WHO reporting, where conditions are often described in terms of global burden and risk factors.
+
+# BERTopic 
+```{python}
+from bertopic import BERTopic
+```
+
+```{python}
+ctfidf_model = ClassTfidfTransformer(
+  reduce_frequent_words=True
+)
+```
+
+
+```{python}
+topic_model = BERTopic(ctfidf_model=ctfidf_model)
+
+topics, probs = topic_model.fit_transform(condition_df['key_facts_cleaned'].to_list())
+
+dump(
+  [topic_model, topics, probs], 
+  '/Users/maddypitman/Documents/Unstructured/topic_model.joblib'
+)
+```
+
+```{python}
+topic_model, topics, probs = load(
+  '/Users/maddypitman/Documents/Unstructured/topic_model.joblib'
+)
+
+topic_model.get_topic_info()
+
+topic_model.get_topic(0)
+
+topic_model.get_document_info(condition_df['key_facts_cleaned'].to_list())
+
+topic_model.get_representative_docs(0)
+
+topic_model.generate_topic_labels()
+
+topic_model.reduce_topics(condition_df['key_facts_cleaned'].to_list(), nr_topics=10)
+```
+
+
+```{python}
+
+docs = condition_df['key_facts_cleaned'].to_list()
+targets = condition_df['condition_class'].to_list()
+
+topics_per_class = topic_model.topics_per_class(docs, classes=targets)
+```
+
+```{python}
+topic_model.visualize_topics_per_class(topics_per_class, top_n_topics=10)
+```
+
+This visualization suggests a strong emphasis on infectious disease content relative to other health categories. While chronic physical and mental health conditions are also significant, maternal/reproductive and substance-related topics appear comparatively underrepresented. This imbalance likely reflects either the composition of the source material or the themed priorities present in the WHO site.
+
+
+# Further Inverstigation
+## How many conditions mention lack of available resources or are challenges in low income areas?
+
+```{python}
+resource_gap = condition_df[condition_df["key_facts"].str.contains("low resource|low-income|developing country|resource-limited", case=False, na=False)]
+len(resource_gap)
+resource_gap[["condition", "key_facts"]].head(10)
+```
+
+While most conditions focus on disease burden and clinical facts, a small subset mention impacts in low-income or resource-limited settings. These include gaps in access to treatment (epilepsy), survival differences (childhood cancer), limited service availability (vision care), and weaknesses in health system infrastructure (blood safety, civil registration, medicine regulation). Although not the dominant pattern, these examples show that resource limitations remain an important underlying factor across different areas of global health.
+
+# Limitations and Future Directions
+
+While I wanted to do a project on a medical topic, the available WHO information does not consistently record the same sections or record these sections in the same format. If there had been a more straightforward way of using regex to pull the numbers of people effected by each condition it would have been interesting to do a more quantitative analysis of the conditions. However, this still allowed me to practice web scraping and text analysis. 
+
+
+
+
+
+
+
+
+
