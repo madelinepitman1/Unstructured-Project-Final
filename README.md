@@ -278,19 +278,6 @@ comparison = condition_df[condition_df["consequences"].notna()]
 comparison[["condition", "key_facts_sentiment", "key_facts_confidence", "consequences_sentiment", "consequences_confidence"]]
 ```
 
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-&#10;    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-&#10;    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-
 |  | condition | key_facts_sentiment | key_facts_confidence | consequences_sentiment | consequences_confidence |
 |----|----|----|----|----|----|
 | 0 | Abortion | NEGATIVE | 0.918121 | NEGATIVE | 0.990474 |
@@ -301,7 +288,6 @@ comparison[["condition", "key_facts_sentiment", "key_facts_confidence", "consequ
 | 151 | Obesity and overweight | NEGATIVE | 0.970929 | POSITIVE | 0.950793 |
 | 229 | Violence against women | NEGATIVE | 0.994274 | NEGATIVE | 0.981998 |
 
-</div>
 
 Since there are only 7 conditions that recorded consequences it is easy
 to visually compare the sentiment labels for key facts and consequences.
@@ -327,19 +313,6 @@ pd.set_option("display.max_colwidth", None)
 positives[["condition", "key_facts","key_facts_sentiment", "key_facts_confidence"]].head(4)
 ```
 
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-&#10;    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-&#10;    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-
 |  | condition | key_facts | key_facts_sentiment | key_facts_confidence |
 |----|----|----|----|----|
 | 4 | Ageing and health | All countries face major challenges to ensure that their health and social systems are ready to make the most of this demographic shift. \| In 2050, 80% of older people will be living in low- and middle-income countries. \| The pace of population ageing is much faster than in the past. \| In 2020, the number of people aged 60 years and older outnumbered children younger than 5 years. \| Between 2015 and 2050, the proportion of the world's population over 60 years will nearly double from 12% to 22%. | POSITIVE | 0.892828 |
@@ -347,7 +320,7 @@ positives[["condition", "key_facts","key_facts_sentiment", "key_facts_confidence
 | 13 | Assistive technology | Assistive products can range from physical products such as wheelchairs, glasses, prosthetic limbs, white canes, and hearing aids to digital solutions such as speech recognition or time management software and captioning. \| Most people who use assistive technology use more than one product, making integrated services important. \| Globally, more than 2.5 billion people need one or more assistive products. \| With an ageing global population and a rise in noncommunicable diseases, an estimated 3.5 billion people will need assistive technology by 2050. \| In many countries, most people who need assistive technology do not have access to it. | POSITIVE | 0.968308 |
 | 31 | Chagas disease (also known as American trypanosomiasis) |  | POSITIVE | 0.748121 |
 
-</div>
+
 
 Taking a closer look at the first condition it flagged as positive,
 “Ageing and health”, it seems the model classified this passage as
@@ -661,12 +634,11 @@ The LDA topic model identified five broad themes across the WHO key
 facts text. Several of the topics centered on infectious disease burden,
 particularly among children, with frequent references to death,
 infection, vaccines, and cases. Another theme focused on women’s health
-and gender-related issues, including cancer, violence, and maternal
-health indicators. A broader population topic also emerged, emphasizing
-health systems, life expectancy, access to care, and differences across
-countries. Together, these themes suggest that WHO reporting frequently
-frames conditions in terms of mortality, demographic impact, and global
-health infrastructure.
+and gender-related issues, including cancer and violence. A broader population 
+topic also emerged, emphasizing health systems, access to care and food, 
+and differences across areas. Together, these themes suggest that WHO 
+reporting frequently frames conditions in terms of mortality, demographic impact, 
+and global health terms.
 
 Overall, the model indicates that infectious diseases and population
 health metrics are dominant patterns in the language of the fact sheets.
@@ -699,20 +671,6 @@ dump(
 )
 ```
 
-    Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
-
-    Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]
-
-    BertModel LOAD REPORT from: sentence-transformers/all-MiniLM-L6-v2
-    Key                     | Status     |  | 
-    ------------------------+------------+--+-
-    embeddings.position_ids | UNEXPECTED |  | 
-
-    Notes:
-    - UNEXPECTED    :can be ignored when loading from different task/architecture; not ok if you expect identical arch.
-
-    ['/Users/maddypitman/Documents/Unstructured/topic_model.joblib']
-
 ``` python
 topic_model, topics, probs = load(
   '/Users/maddypitman/Documents/Unstructured/topic_model.joblib'
@@ -731,7 +689,6 @@ topic_model.generate_topic_labels()
 topic_model.reduce_topics(condition_df['key_facts_cleaned'].to_list(), nr_topics=10)
 ```
 
-    <bertopic._bertopic.BERTopic at 0x38959c290>
 
 ``` python
 docs = condition_df['key_facts_cleaned'].to_list()
@@ -744,42 +701,12 @@ topics_per_class = topic_model.topics_per_class(docs, classes=targets)
 topic_model.visualize_topics_per_class(topics_per_class, top_n_topics=10)
 ```
 
-        <script type="text/javascript">
-        window.PlotlyConfig = {MathJaxConfig: 'local'};
-        if (window.MathJax && window.MathJax.Hub && window.MathJax.Hub.Config) {window.MathJax.Hub.Config({SVG: {font: "STIX-Web"}});}
-        </script>
-        <script type="module">import "https://cdn.plot.ly/plotly-3.3.1.min"</script>
-        
-
-<div>            <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-AMS-MML_SVG"></script><script type="text/javascript">if (window.MathJax && window.MathJax.Hub && window.MathJax.Hub.Config) {window.MathJax.Hub.Config({SVG: {font: "STIX-Web"}});}</script>                <script type="text/javascript">window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
-        <script charset="utf-8" src="https://cdn.plot.ly/plotly-3.3.1.min.js" integrity="sha256-4rD3fugVb/nVJYUv5Ky3v+fYXoouHaBSP20WIJuEiWg=" crossorigin="anonymous"></script>                <div id="836253a8-a146-41c8-ab98-d37e76d772f6" class="plotly-graph-div" style="height:900px; width:1250px;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("836253a8-a146-41c8-ab98-d37e76d772f6")) {                    Plotly.newPlot(                        "836253a8-a146-41c8-ab98-d37e76d772f6",                        [{"hoverinfo":"text","hovertext":["\u003cb\u003eTopic 0\u003c\u002fb\u003e\u003cbr\u003eWords: of, and, the, in, to","\u003cb\u003eTopic 0\u003c\u002fb\u003e\u003cbr\u003eWords: and, in, the, of, is","\u003cb\u003eTopic 0\u003c\u002fb\u003e\u003cbr\u003eWords: and, of, the, in, to","\u003cb\u003eTopic 0\u003c\u002fb\u003e\u003cbr\u003eWords: infertility, electricity, facilities, fertility, access","\u003cb\u003eTopic 0\u003c\u002fb\u003e\u003cbr\u003eWords: and, of, the, in, to","\u003cb\u003eTopic 0\u003c\u002fb\u003e\u003cbr\u003eWords: additives, food, echinococcosis, ewaste, the","\u003cb\u003eTopic 0\u003c\u002fb\u003e\u003cbr\u003eWords: and, of, the, in, is"],"marker":{"color":"#E69F00"},"name":"0_and_of_the_in","orientation":"h","visible":true,"x":{"dtype":"i1","bdata":"JBolAioFRw=="},"y":["Other","Chronic Physical","Terminal","Maternal\u002fReproductive","Mental","Substance-related","Infectious"],"type":"bar"},{"hoverinfo":"text","hovertext":["\u003cb\u003eTopic 1\u003c\u002fb\u003e\u003cbr\u003eWords: , , , , "],"marker":{"color":"#56B4E9"},"name":"1____","orientation":"h","visible":"legendonly","x":{"dtype":"i1","bdata":"Eg=="},"y":["Other"],"type":"bar"}],                        {"template":{"data":{"barpolar":[{"marker":{"line":{"color":"white","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"bar":[{"error_x":{"color":"rgb(36,36,36)"},"error_y":{"color":"rgb(36,36,36)"},"marker":{"line":{"color":"white","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"carpet":[{"aaxis":{"endlinecolor":"rgb(36,36,36)","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"rgb(36,36,36)"},"baxis":{"endlinecolor":"rgb(36,36,36)","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"rgb(36,36,36)"},"type":"carpet"}],"choropleth":[{"colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"},"type":"choropleth"}],"contourcarpet":[{"colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"},"type":"contourcarpet"}],"contour":[{"colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"},"colorscale":[[0.0,"#440154"],[0.1111111111111111,"#482878"],[0.2222222222222222,"#3e4989"],[0.3333333333333333,"#31688e"],[0.4444444444444444,"#26828e"],[0.5555555555555556,"#1f9e89"],[0.6666666666666666,"#35b779"],[0.7777777777777778,"#6ece58"],[0.8888888888888888,"#b5de2b"],[1.0,"#fde725"]],"type":"contour"}],"heatmap":[{"colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"},"colorscale":[[0.0,"#440154"],[0.1111111111111111,"#482878"],[0.2222222222222222,"#3e4989"],[0.3333333333333333,"#31688e"],[0.4444444444444444,"#26828e"],[0.5555555555555556,"#1f9e89"],[0.6666666666666666,"#35b779"],[0.7777777777777778,"#6ece58"],[0.8888888888888888,"#b5de2b"],[1.0,"#fde725"]],"type":"heatmap"}],"histogram2dcontour":[{"colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"},"colorscale":[[0.0,"#440154"],[0.1111111111111111,"#482878"],[0.2222222222222222,"#3e4989"],[0.3333333333333333,"#31688e"],[0.4444444444444444,"#26828e"],[0.5555555555555556,"#1f9e89"],[0.6666666666666666,"#35b779"],[0.7777777777777778,"#6ece58"],[0.8888888888888888,"#b5de2b"],[1.0,"#fde725"]],"type":"histogram2dcontour"}],"histogram2d":[{"colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"},"colorscale":[[0.0,"#440154"],[0.1111111111111111,"#482878"],[0.2222222222222222,"#3e4989"],[0.3333333333333333,"#31688e"],[0.4444444444444444,"#26828e"],[0.5555555555555556,"#1f9e89"],[0.6666666666666666,"#35b779"],[0.7777777777777778,"#6ece58"],[0.8888888888888888,"#b5de2b"],[1.0,"#fde725"]],"type":"histogram2d"}],"histogram":[{"marker":{"line":{"color":"white","width":0.6}},"type":"histogram"}],"mesh3d":[{"colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"},"type":"mesh3d"}],"parcoords":[{"line":{"colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"}},"type":"parcoords"}],"pie":[{"automargin":true,"type":"pie"}],"scatter3d":[{"line":{"colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"}},"marker":{"colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"}},"type":"scatter3d"}],"scattercarpet":[{"marker":{"colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"}},"type":"scattercarpet"}],"scattergeo":[{"marker":{"colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"}},"type":"scattergeo"}],"scattergl":[{"marker":{"colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"}},"type":"scattergl"}],"scattermapbox":[{"marker":{"colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"}},"type":"scattermapbox"}],"scattermap":[{"marker":{"colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"}},"type":"scattermap"}],"scatterpolargl":[{"marker":{"colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"}},"type":"scatterpolargl"}],"scatterpolar":[{"marker":{"colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"}},"type":"scatterpolar"}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"scatterternary":[{"marker":{"colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"}},"type":"scatterternary"}],"surface":[{"colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"},"colorscale":[[0.0,"#440154"],[0.1111111111111111,"#482878"],[0.2222222222222222,"#3e4989"],[0.3333333333333333,"#31688e"],[0.4444444444444444,"#26828e"],[0.5555555555555556,"#1f9e89"],[0.6666666666666666,"#35b779"],[0.7777777777777778,"#6ece58"],[0.8888888888888888,"#b5de2b"],[1.0,"#fde725"]],"type":"surface"}],"table":[{"cells":{"fill":{"color":"rgb(237,237,237)"},"line":{"color":"white"}},"header":{"fill":{"color":"rgb(217,217,217)"},"line":{"color":"white"}},"type":"table"}]},"layout":{"annotationdefaults":{"arrowhead":0,"arrowwidth":1},"autotypenumbers":"strict","coloraxis":{"colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"}},"colorscale":{"diverging":[[0.0,"rgb(103,0,31)"],[0.1,"rgb(178,24,43)"],[0.2,"rgb(214,96,77)"],[0.3,"rgb(244,165,130)"],[0.4,"rgb(253,219,199)"],[0.5,"rgb(247,247,247)"],[0.6,"rgb(209,229,240)"],[0.7,"rgb(146,197,222)"],[0.8,"rgb(67,147,195)"],[0.9,"rgb(33,102,172)"],[1.0,"rgb(5,48,97)"]],"sequential":[[0.0,"#440154"],[0.1111111111111111,"#482878"],[0.2222222222222222,"#3e4989"],[0.3333333333333333,"#31688e"],[0.4444444444444444,"#26828e"],[0.5555555555555556,"#1f9e89"],[0.6666666666666666,"#35b779"],[0.7777777777777778,"#6ece58"],[0.8888888888888888,"#b5de2b"],[1.0,"#fde725"]],"sequentialminus":[[0.0,"#440154"],[0.1111111111111111,"#482878"],[0.2222222222222222,"#3e4989"],[0.3333333333333333,"#31688e"],[0.4444444444444444,"#26828e"],[0.5555555555555556,"#1f9e89"],[0.6666666666666666,"#35b779"],[0.7777777777777778,"#6ece58"],[0.8888888888888888,"#b5de2b"],[1.0,"#fde725"]]},"colorway":["#1F77B4","#FF7F0E","#2CA02C","#D62728","#9467BD","#8C564B","#E377C2","#7F7F7F","#BCBD22","#17BECF"],"font":{"color":"rgb(36,36,36)"},"geo":{"bgcolor":"white","lakecolor":"white","landcolor":"white","showlakes":true,"showland":true,"subunitcolor":"white"},"hoverlabel":{"align":"left"},"hovermode":"closest","mapbox":{"style":"light"},"margin":{"b":0,"l":0,"r":0,"t":30},"paper_bgcolor":"white","plot_bgcolor":"white","polar":{"angularaxis":{"gridcolor":"rgb(232,232,232)","linecolor":"rgb(36,36,36)","showgrid":false,"showline":true,"ticks":"outside"},"bgcolor":"white","radialaxis":{"gridcolor":"rgb(232,232,232)","linecolor":"rgb(36,36,36)","showgrid":false,"showline":true,"ticks":"outside"}},"scene":{"xaxis":{"backgroundcolor":"white","gridcolor":"rgb(232,232,232)","gridwidth":2,"linecolor":"rgb(36,36,36)","showbackground":true,"showgrid":false,"showline":true,"ticks":"outside","zeroline":false,"zerolinecolor":"rgb(36,36,36)"},"yaxis":{"backgroundcolor":"white","gridcolor":"rgb(232,232,232)","gridwidth":2,"linecolor":"rgb(36,36,36)","showbackground":true,"showgrid":false,"showline":true,"ticks":"outside","zeroline":false,"zerolinecolor":"rgb(36,36,36)"},"zaxis":{"backgroundcolor":"white","gridcolor":"rgb(232,232,232)","gridwidth":2,"linecolor":"rgb(36,36,36)","showbackground":true,"showgrid":false,"showline":true,"ticks":"outside","zeroline":false,"zerolinecolor":"rgb(36,36,36)"}},"shapedefaults":{"fillcolor":"black","line":{"width":0},"opacity":0.3},"ternary":{"aaxis":{"gridcolor":"rgb(232,232,232)","linecolor":"rgb(36,36,36)","showgrid":false,"showline":true,"ticks":"outside"},"baxis":{"gridcolor":"rgb(232,232,232)","linecolor":"rgb(36,36,36)","showgrid":false,"showline":true,"ticks":"outside"},"bgcolor":"white","caxis":{"gridcolor":"rgb(232,232,232)","linecolor":"rgb(36,36,36)","showgrid":false,"showline":true,"ticks":"outside"}},"title":{"x":0.05},"xaxis":{"automargin":true,"gridcolor":"rgb(232,232,232)","linecolor":"rgb(36,36,36)","showgrid":false,"showline":true,"ticks":"outside","title":{"standoff":15},"zeroline":false,"zerolinecolor":"rgb(36,36,36)"},"yaxis":{"automargin":true,"gridcolor":"rgb(232,232,232)","linecolor":"rgb(36,36,36)","showgrid":false,"showline":true,"ticks":"outside","title":{"standoff":15},"zeroline":false,"zerolinecolor":"rgb(36,36,36)"}}},"xaxis":{"showgrid":true,"title":{"text":"Frequency"}},"yaxis":{"showgrid":true,"title":{"text":"Class"}},"title":{"font":{"size":22,"color":"Black"},"text":"\u003cb\u003eTopics per Class\u003c\u002fb\u003e","y":0.95,"x":0.4,"xanchor":"center","yanchor":"top"},"hoverlabel":{"font":{"size":16,"family":"Rockwell"},"bgcolor":"white"},"width":1250,"height":900,"legend":{"title":{"text":"\u003cb\u003eGlobal Topic Representation"}}},                        {"responsive": true}                    ).then(function(){
-                            &#10;var gd = document.getElementById('836253a8-a146-41c8-ab98-d37e76d772f6');
-var x = new MutationObserver(function (mutations, observer) {{
-        var display = window.getComputedStyle(gd).display;
-        if (!display || display === 'none') {{
-            console.log([gd, 'removed!']);
-            Plotly.purge(gd);
-            observer.disconnect();
-        }}
-}});
-&#10;// Listen for the removal of the full notebook cells
-var notebookContainer = gd.closest('#notebook-container');
-if (notebookContainer) {{
-    x.observe(notebookContainer, {childList: true});
-}}
-&#10;// Listen for the clearing of the current output cell
-var outputEl = gd.closest('.output');
-if (outputEl) {{
-    x.observe(outputEl, {childList: true});
-}}
-&#10;                        })                };            </script>        </div>
-
 This visualization suggests a strong emphasis on infectious disease
 content relative to other health categories. While chronic physical and
 mental health conditions are also significant, maternal/reproductive and
-substance-related topics appear comparatively underrepresented. This
+substance-related topics appear less represented. This
 imbalance likely reflects either the composition of the source material
-or the themed priorities present in the WHO site.
+or the priorities present in the WHO site.
 
 # Further Inverstigation
 
@@ -791,18 +718,6 @@ len(resource_gap)
 resource_gap[["condition", "key_facts"]].head(10)
 ```
 
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-&#10;    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-&#10;    .dataframe thead th {
-        text-align: right;
-    }
-</style>
 
 |  | condition | key_facts |
 |----|----|----|
@@ -813,7 +728,7 @@ resource_gap[["condition", "key_facts"]].head(10)
 | 71 | Epilepsy | Epilepsy is a chronic noncommunicable disease of the brain that affects people of all ages. \| Around 50 million people worldwide have epilepsy, making it one of the most common neurological diseases globally. \| Nearly 80% of people with epilepsy live in low- and middle-income countries. \| It is estimated that up to 70% of people living with epilepsy could live seizure-free if properly diagnosed and treated. \| The risk of premature death in people with epilepsy is up to three times higher than for the general population. \| Three quarters of people with epilepsy living in low-income countries do not get the treatment they need. \| In many parts of the world, people with epilepsy and their families suffer from stigma and discrimination. |
 | 174 | Prequalification of medicines by WHO | Every year, billions of US dollars worth of medicines are purchased by or through international procurement agencies – such as UNICEF, the Global Fund to Fight AIDS, Tuberculosis and Malaria, and UNITAID – for distribution in resource-limited countries. \| The WHO Prequalification of Medicines Programme (PQP) helps ensure that medicines supplied by procurement agencies meet acceptable standards of quality, safety and efficacy. \| At the end of 2012, the WHO List of Prequalified Medicinal Products contained 316 medicines for priority diseases. \| WHO's list of prequalified medicinal products is used by international procurement agencies and increasingly by countries to guide bulk purchasing of medicines. \| PQP also prequalifies active pharmaceutical ingredients and quality control laboratories. |
 
-</div>
+
 
 While most conditions focus on disease burden and clinical facts, a
 small subset mention impacts in low-income or resource-limited settings.
